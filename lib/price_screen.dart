@@ -1,3 +1,6 @@
+import 'dart:ffi';
+
+import 'package:bitcoin_ticker/services/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'coin_data.dart';
@@ -10,6 +13,9 @@ class PriceScreen extends StatefulWidget {
 
 class _PriceScreenState extends State<PriceScreen> {
   String selectedCurrency = 'USD';
+  String selectedCryptoCurrency = 'BTC';
+  String exchangeRate = '?';
+  CurrencyExchangeModel currencyExchangeModel = CurrencyExchangeModel();
 
   DropdownButton<String> androidDropdown() {
     List<DropdownMenuItem<String>> dropdownItems = [];
@@ -24,9 +30,11 @@ class _PriceScreenState extends State<PriceScreen> {
     return DropdownButton<String>(
       value: selectedCurrency,
       items: dropdownItems,
-      onChanged: (value) {
+      onChanged: (value) async {
         setState(() {
           selectedCurrency = value;
+          exchangeRate = '?';
+          getExchangeRate();
         });
       },
     );
@@ -39,21 +47,43 @@ class _PriceScreenState extends State<PriceScreen> {
     }
 
     return CupertinoPicker(
+      //USD
+      scrollController: FixedExtentScrollController(initialItem: 19),
       backgroundColor: Colors.lightBlue,
       itemExtent: 32.0,
       onSelectedItemChanged: (selectedIndex) {
-        print(selectedIndex);
+        setState(() {
+          print(selectedIndex);
+          selectedCurrency = currenciesList[selectedIndex];
+          exchangeRate = '?';
+          getExchangeRate();
+        });
       },
       children: pickerItems,
     );
   }
 
-  //TODO: Create a method here called getData() to get the coin data from coin_data.dart
+  void updateUI(var rateData) {
+    setState(() {
+      if(rateData == null){
+        exchangeRate = 'error';
+        return;
+      }
+      double rate = rateData['rate'];
+      exchangeRate = rate.toStringAsFixed(2);
+    });
+  }
+
+  getExchangeRate() async {
+    var rateData = await currencyExchangeModel.getCryptoFiatExchangeRate(
+        selectedCryptoCurrency, selectedCurrency);
+    updateUI(rateData);
+  }
 
   @override
   void initState() {
     super.initState();
-    //TODO: Call getData() when the screen loads up.
+    getExchangeRate();
   }
 
   @override
@@ -77,8 +107,7 @@ class _PriceScreenState extends State<PriceScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
                 child: Text(
-                  //TODO: Update the Text Widget with the live bitcoin data here.
-                  '1 BTC = ? USD',
+                  '1 BTC = $exchangeRate $selectedCurrency',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20.0,
